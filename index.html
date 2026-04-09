@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inscripción Torneo Valorant | UNLU Esports</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>⚔️ TORNEO VALORANT UNLU</h1>
+        <button class="btn-admin" onclick="abrirModalAdmin()">👑 ADMIN</button>
+    </div>
+
+    <div class="card">
+        <div class="tabs">
+            <button class="tab-btn active" id="tabSolo">🎮 JUGADOR SOLO</button>
+            <button class="tab-btn" id="tabEquipo">👥 EQUIPO (5)</button>
+        </div>
+
+        <!-- FORMULARIO SOLO -->
+        <div id="formSolo">
+            <div class="form-group">
+                <label>🎯 RIOT ID (Nombre#Tag)</label>
+                <input type="text" id="soloRiotId" placeholder="Ej: TenZ#1234">
+            </div>
+            <div class="form-group">
+                <label>📊 RANGO ACTUAL</label>
+                <select id="soloRango">
+                    <option value="">Selecciona tu rango</option>
+                    <option>Hierro</option><option>Bronce</option><option>Plata</option>
+                    <option>Oro</option><option>Platino</option><option>Diamante</option>
+                    <option>Ascendente</option><option>Inmortal</option><option>Radiante</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>⚡ ROL PREFERIDO</label>
+                <select id="soloRol">
+                    <option value="">Selecciona tu rol</option>
+                    <option>Duelista</option><option>Controlador</option>
+                    <option>Centinela</option><option>Iniciador</option>
+                    <option>Flex (cualquiera)</option>
+                </select>
+            </div>
+            <button class="btn-register" onclick="registrarSolo()">✅ INSCRIBIRME COMO SOLO</button>
+            <div id="msgSolo" class="success-msg"></div>
+        </div>
+
+        <!-- FORMULARIO EQUIPO -->
+        <div id="formEquipo" class="hidden">
+            <div class="form-group">
+                <label>🏷️ NOMBRE DEL EQUIPO</label>
+                <input type="text" id="nombreEquipo" placeholder="Ej: Los Tryhards">
+            </div>
+            <div class="form-group">
+                <label>👑 CAPITÁN (RIOT ID)</label>
+                <input type="text" id="capitanId" placeholder="Ej: Capitan#LAN">
+            </div>
+            <div class="team-grid">
+                <div><label>🎮 Jugador 2</label><input type="text" id="p2" placeholder="RIOT ID"></div>
+                <div><label>🎮 Jugador 3</label><input type="text" id="p3" placeholder="RIOT ID"></div>
+                <div><label>🎮 Jugador 4</label><input type="text" id="p4" placeholder="RIOT ID"></div>
+                <div><label>🎮 Jugador 5</label><input type="text" id="p5" placeholder="RIOT ID"></div>
+            </div>
+            <button class="btn-register" onclick="registrarEquipo()">✅ INSCRIBIR EQUIPO</button>
+            <div id="msgEquipo" class="success-msg"></div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL ADMIN -->
+<div id="modalAdmin" class="modal hidden">
+    <div class="modal-content">
+        <span class="close-modal" onclick="cerrarModalAdmin()">&times;</span>
+        <h2>🔐 ACCESO ADMINISTRADOR</h2>
+        <div class="form-group">
+            <label>Usuario</label>
+            <input type="text" id="adminUser" placeholder="Usuario">
+        </div>
+        <div class="form-group">
+            <label>Contraseña</label>
+            <input type="password" id="adminPass" placeholder="Contraseña">
+        </div>
+        <div class="modal-buttons">
+            <button class="btn-login" onclick="loginAdmin()">ENTRAR</button>
+            <button class="btn-cancel" onclick="cerrarModalAdmin()">CANCELAR</button>
+        </div>
+        <div id="adminError" class="error-msg"></div>
+    </div>
+</div>
+
+<!-- PANEL ADMIN (se muestra después de login) -->
+<div id="panelAdminGlobal" class="hidden">
+    <div class="card" style="margin-top: 30px;">
+        <h2>👑 PANEL DE ADMINISTRACIÓN</h2>
+        <div class="admin-actions">
+            <button onclick="exportarDatos()">📋 EXPORTAR JSON</button>
+            <button onclick="limpiarBase()" style="background:#ff4655;">🗑️ LIMPIAR TODO</button>
+            <button onclick="cerrarSesionAdmin()">🚪 CERRAR SESIÓN</button>
+        </div>
+
+        <div class="admin-panel">
+            <h3>🎮 JUGADORES SOLO</h3>
+            <table id="tablaSolo">
+                <thead><tr><th>Riot ID</th><th>Rango</th><th>Rol</th><th>Fecha</th><th></th></tr></thead>
+                <tbody></tbody>
+            </table>
+
+            <h3>👥 EQUIPOS REGISTRADOS</h3>
+            <table id="tablaEquipo">
+                <thead><tr><th>Equipo</th><th>Capitán</th><th>Jugadores</th><th>Fecha</th><th></th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ========== CONFIGURACIÓN ==========
+    const ADMIN_USER = "esports";
+    const ADMIN_PASS = "unlues";
+
+    const STORAGE_SOLO = "valo_torneo_solo";
+    const STORAGE_EQUIPO = "valo_torneo_equipo";
+
+    let sesionAdminActiva = false;
+
+    // ========== INICIALIZACIÓN ==========
+    document.addEventListener('DOMContentLoaded', () => {
+        // Pestañas
+        document.getElementById('tabSolo').addEventListener('click', () => {
+            document.getElementById('formSolo').classList.remove('hidden');
+            document.getElementById('formEquipo').classList.add('hidden');
+            document.getElementById('tabSolo').classList.add('active');
+            document.getElementById('tabEquipo').classList.remove('active');
+        });
+        
+        document.getElementById('tabEquipo').addEventListener('click', () => {
+            document.getElementById('formEquipo').classList.remove('hidden');
+            document.getElementById('formSolo').classList.add('hidden');
+            document.getElementById('tabEquipo').classList.add('active');
+            document.getElementById('tabSolo').classList.remove('active');
+        });
+
+        // Verificar sesión guardada
+        if(sessionStorage.getItem('adminValorant') === 'true') {
+            sesionAdminActiva = true;
+            document.getElementById('panelAdminGlobal').classList.remove('hidden');
+            cargarTablas();
+        }
+    });
+
+    // ========== MODAL ADMIN ==========
+    function abrirModalAdmin() {
+        document.getElementById('modalAdmin').classList.remove('hidden');
+        document.getElementById('adminError').innerText = '';
+        document.getElementById('adminUser').value = '';
+        document.getElementById('adminPass').value = '';
+    }
+
+    function cerrarModalAdmin() {
+        document.getElementById('modalAdmin').classList.add('hidden');
+    }
+
+    // ========== FUNCIONES ADMIN ==========
+    function loginAdmin() {
+        const user = document.getElementById('adminUser').value;
+        const pass = document.getElementById('adminPass').value;
+
+        if (user === ADMIN_USER && pass === ADMIN_PASS) {
+            sesionAdminActiva = true;
+            sessionStorage.setItem('adminValorant', 'true');
+            document.getElementById('modalAdmin').classList.add('hidden');
+            document.getElementById('panelAdminGlobal').classList.remove('hidden');
+            cargarTablas();
+        } else {
+            document.getElementById('adminError').innerText = '❌ Usuario o contraseña incorrectos';
+        }
+    }
+
+    function cerrarSesionAdmin() {
+        sesionAdminActiva = false;
+        sessionStorage.removeItem('adminValorant');
+        document.getElementById('panelAdminGlobal').classList.add('hidden');
+    }
+
+    // ========== BASE DE DATOS (LocalStorage) ==========
+    function obtenerDatos(key) {
+        const data = localStorage.getItem(key);
+        return data ? JSON.parse(data) : [];
+    }
+
+    function guardarDatos(key, array) {
+        localStorage.setItem(key, JSON.stringify(array));
+    }
+
+    // ========== REGISTROS ==========
+    function registrarSolo() {
+        const riotId = document.getElementById('soloRiotId').value.trim();
+        const rango = document.getElementById('soloRango').value;
+        const rol = document.getElementById('soloRol').value;
+        const msgDiv = document.getElementById('msgSolo');
+
+        if (!riotId || !rango || !rol) {
+            msgDiv.className = 'error-msg';
+            msgDiv.innerText = "⚠️ Todos los campos son obligatorios.";
+            return;
+        }
+
+        if (!riotId.includes('#')) {
+            msgDiv.className = 'error-msg';
+            msgDiv.innerText = "⚠️ El Riot ID debe incluir # (Ej: Jugador#1234)";
+            return;
+        }
+
+        const lista = obtenerDatos(STORAGE_SOLO);
+        lista.push({
+            id: Date.now(),
+            riotId: riotId,
+            rango: rango,
+            rol: rol,
+            fecha: new Date().toLocaleString()
+        });
+        guardarDatos(STORAGE_SOLO, lista);
+
+        msgDiv.className = 'success-msg';
+        msgDiv.innerText = "✅ ¡Registrado! Buena suerte en el torneo.";
+        
+        document.getElementById('soloRiotId').value = '';
+        document.getElementById('soloRango').value = '';
+        document.getElementById('soloRol').value = '';
+
+        if(sesionAdminActiva) cargarTablas();
+        
+        setTimeout(() => msgDiv.innerText = '', 3000);
+    }
+
+    function registrarEquipo() {
+        const nombre = document.getElementById('nombreEquipo').value.trim();
+        const capitan = document.getElementById('capitanId').value.trim();
+        const p2 = document.getElementById('p2').value.trim();
+        const p3 = document.getElementById('p3').value.trim();
+        const p4 = document.getElementById('p4').value.trim();
+        const p5 = document.getElementById('p5').value.trim();
+        const msgDiv = document.getElementById('msgEquipo');
+
+        if (!nombre || !capitan || !p2 || !p3 || !p4 || !p5) {
+            msgDiv.className = 'error-msg';
+            msgDiv.innerText = "⚠️ Debes ingresar el nombre del equipo y los 5 jugadores.";
+            return;
+        }
+
+        const lista = obtenerDatos(STORAGE_EQUIPO);
+        lista.push({
+            id: Date.now(),
+            nombre: nombre,
+            capitan: capitan,
+            jugadores: [capitan, p2, p3, p4, p5],
+            fecha: new Date().toLocaleString()
+        });
+        guardarDatos(STORAGE_EQUIPO, lista);
+
+        msgDiv.className = 'success-msg';
+        msgDiv.innerText = `✅ ¡Equipo "${nombre}" inscrito correctamente!`;
+        
+        document.getElementById('nombreEquipo').value = '';
+        document.getElementById('capitanId').value = '';
+        document.getElementById('p2').value = '';
+        document.getElementById('p3').value = '';
+        document.getElementById('p4').value = '';
+        document.getElementById('p5').value = '';
+
+        if(sesionAdminActiva) cargarTablas();
+        
+        setTimeout(() => msgDiv.innerText = '', 3000);
+    }
+
+    // ========== CARGAR TABLAS ADMIN ==========
+    function cargarTablas() {
+        cargarTablaSolo();
+        cargarTablaEquipo();
+    }
+
+    function cargarTablaSolo() {
+        const lista = obtenerDatos(STORAGE_SOLO);
+        const tbody = document.querySelector('#tablaSolo tbody');
+        tbody.innerHTML = '';
+        
+        lista.sort((a,b) => b.id - a.id).forEach(item => {
+            const fila = document.createElement('tr');
+            fila.innerHTML = `
+                <td>${escapeHtml(item.riotId)}</td>
+                <td>${escapeHtml(item.rango)}</td>
+                <td>${escapeHtml(item.rol)}</td>
+                <td>${item.fecha || 'N/A'}</td>
+                <td><button class="delete-btn" onclick="eliminarRegistro('${STORAGE_SOLO}', ${item.id})">🗑️</button></td>
+            `;
+            tbody.appendChild(fila);
+        });
+    }
+
+    function cargarTablaEquipo() {
+        const lista = obtenerDatos(STORAGE_EQUIPO);
+        const tbody = document.querySelector('#tablaEquipo tbody');
+        tbody.innerHTML = '';
+        
+        lista.sort((a,b) => b.id - a.id).forEach(item => {
+            const fila = document.createElement('tr');
+            fila.innerHTML = `
+                <td>${escapeHtml(item.nombre)}</td>
+                <td>${escapeHtml(item.capitan)}</td>
+                <td>${escapeHtml(item.jugadores.join(', '))}</td>
+                <td>${item.fecha || 'N/A'}</td>
+                <td><button class="delete-btn" onclick="eliminarRegistro('${STORAGE_EQUIPO}', ${item.id})">🗑️</button></td>
+            `;
+            tbody.appendChild(fila);
+        });
+    }
+
+    function eliminarRegistro(storage, id) {
+        if(confirm('¿Eliminar este registro?')) {
+            let lista = obtenerDatos(storage);
+            lista = lista.filter(item => item.id !== id);
+            guardarDatos(storage, lista);
+            cargarTablas();
+        }
+    }
+
+    function exportarDatos() {
+        const datos = {
+            jugadoresSolo: obtenerDatos(STORAGE_SOLO),
+            equipos: obtenerDatos(STORAGE_EQUIPO),
+            fechaExportacion: new Date().toLocaleString()
+        };
+        const jsonStr = JSON.stringify(datos, null, 2);
+        navigator.clipboard.writeText(jsonStr);
+        alert('✅ Datos copiados al portapapeles');
+    }
+
+    function limpiarBase() {
+        if(confirm('⚠️ ¿ELIMINAR TODOS LOS DATOS? Esta acción no se puede deshacer.')) {
+            guardarDatos(STORAGE_SOLO, []);
+            guardarDatos(STORAGE_EQUIPO, []);
+            if(sesionAdminActiva) cargarTablas();
+            alert('✅ Base de datos limpiada');
+        }
+    }
+
+    function escapeHtml(str) {
+        if(!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if(m === '&') return '&amp;';
+            if(m === '<') return '&lt;';
+            if(m === '>') return '&gt;';
+            return m;
+        });
+    }
+</script>
+
+</body>
+</html>
